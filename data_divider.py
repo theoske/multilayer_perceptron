@@ -12,6 +12,8 @@ The id is not useful for the agent to learn and could be detrimental if it learn
 357 B
 Total = 569
 
+30 data variable
+
 cmd : python3 data_divider.py
 """
 
