@@ -15,13 +15,12 @@ class Training():
     """
         Slicing : array[row_start:row_stop:row_step, col_start:col_stop:col_step]
     """
-    def __innit__(self):
+    def __init__(self):
         self.training_data_array = np.genfromtxt("training_data.csv",delimiter=",",dtype=np.float64)[:,1:]
-        self.validation_data_array = np.genfromtxt("validation_data.csv", delimiter=",",dtype=np.float64)[:, 1:]
-        self.training_result = np.genfromtxt("training_data.csv",delimiter=",")[:, 0]
-        self.validating_result = np.genfromtxt("validation_data.csv", delimiter=",")[:, 0]
+        self.training_real_values = np.genfromtxt("training_data.csv",delimiter=",")[:, 0]
         self.weights = np.zeros(30)
-        self.bias = np.zeros(1)
+        self.bias = 0
+        self.learning_rate = 0.9995
 
     def training(self):
         """
@@ -36,19 +35,30 @@ class Training():
         
         result is 0 for B and 1 for M
         """
-        self.training_result = np.where(self.training_result == 'B', 0, 1)
-        for episode in range(1000):
-            z = self.weights @ self.training_data_array.T + self.bias[:, np.newaxis]
+        self.training_real_values = np.where(self.training_real_values == 'B', 0, 1)
+        for episode in range(2):
+            z = self.weights @ self.training_data_array.T + self.bias
+            #print(z)
             a = self.sigmoid(z)
             l = self.log_loss(a)
-            self.gradient_descent(l)
+            #print(l)
+            self.gradient_descent(l, z)
         
     def sigmoid(self, z):
         return (1 / (np.exp(-z) + 1))
 
-    def log_loss(self, z):
-        pass
+    def log_loss(self, model_predictions):
+        m = self.training_data_array.shape[0]
+        l = -(1/m) * np.sum(self.training_real_values * np.log(model_predictions) + (1 - self.training_real_values)* np.log(1 - model_predictions))
+        return l
     
-    def gradient_descent(self, l):
-        pass
+    def gradient_descent(self, model_predictions):
+        m = self.training_data_array.shape[0]
+        self.weights = self.weights - self.learning_rate * ((1 / m) * np.sum(self.training_data_array.T * (model_predictions - self.training_real_values)))
+        self.bias = self.bias - self.learning_rate * ((1 / m) * np.sum(model_predictions - self.training_real_values))
+        print(self.weights)
+        print(self.bias)
         
+
+t = Training()
+t.training()
