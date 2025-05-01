@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
 
 """
 Perceptron uses 3 formulas :
@@ -17,10 +19,10 @@ class Training():
     """
     def __init__(self):
         self.training_data_array = np.genfromtxt("training_data.csv",delimiter=",",dtype=np.float64)[:,1:]
-        self.training_real_values = np.genfromtxt("training_data.csv",delimiter=",")[:, 0]
-        self.weights = np.zeros(30)
-        self.bias = 0
-        self.learning_rate = 0.9995
+        self.training_real_values = np.genfromtxt("training_data.csv",delimiter=",", dtype=str, usecols=0)
+        self.weights = np.zeros(self.training_data_array.shape[1])
+        self.bias = 0.0
+        self.learning_rate = 0.001
 
     def training(self):
         """
@@ -35,29 +37,48 @@ class Training():
         
         result is 0 for B and 1 for M
         """
-        self.training_real_values = np.where(self.training_real_values == 'B', 0, 1)
-        for episode in range(2):
-            z = self.weights @ self.training_data_array.T + self.bias
-            #print(z)
-            a = self.sigmoid(z)
-            l = self.log_loss(a)
-            #print(l)
-            self.gradient_descent(l, z)
-        
-    def sigmoid(self, z):
-        return (1 / (np.exp(-z) + 1))
+        self.training_real_values[self.training_real_values == 'B'] = 0
+        self.training_real_values[self.training_real_values == 'M'] = 1
+        self.training_real_values = self.training_real_values.astype(np.float64)
+        #print(self.training_real_values)
+        #print(self.weights.shape)
+        #print(self.training_data_array.shape)
+        l = []
+        for episode in range(10000):
+            a = self.model()            
+            l.append(self.log_loss(a))
+            self.gradient_descent(a)
+        y_pred = self.predict()
+        #print(y_pred)
+        print(accuracy_score(self.training_real_values, y_pred))
+        #plt.plot(l)
+        #plt.show()
+    
+    def predict(self):
+        A = self.model()
+        return (A>=0.5)
+    
+    def model(self):
+        z = np.dot(self.training_data_array, self.weights) + self.bias
+        z = np.clip(z, -500, 500)
+        a = self.sigmoid(z)
+        return a
 
-    def log_loss(self, model_predictions):
-        m = self.training_data_array.shape[0]
-        l = -(1/m) * np.sum(self.training_real_values * np.log(model_predictions) + (1 - self.training_real_values)* np.log(1 - model_predictions))
+    def sigmoid(self, z):
+        return (1 / (1 + np.exp(-z)))
+
+    def log_loss(self, A):
+        epsilon = 1e-15
+        A = np.clip(A, a_min= epsilon, a_max = 1-epsilon)
+        y = self.training_real_values
+        m = len(y)
+        l = -(1/m) * np.sum(y * np.log(A) + (1 - y) * np.log(1 - A))
         return l
     
     def gradient_descent(self, model_predictions):
-        m = self.training_data_array.shape[0]
-        self.weights = self.weights - self.learning_rate * ((1 / m) * np.sum(self.training_data_array.T * (model_predictions - self.training_real_values)))
+        m = len(model_predictions)
+        self.weights = self.weights - self.learning_rate * ((1 / m) * (np.dot(self.training_data_array.T, (model_predictions - self.training_real_values))))
         self.bias = self.bias - self.learning_rate * ((1 / m) * np.sum(model_predictions - self.training_real_values))
-        print(self.weights)
-        print(self.bias)
         
 
 t = Training()
