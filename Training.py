@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
+import json
 
 """
 Perceptron uses 3 formulas :
@@ -36,23 +37,22 @@ class Training():
         This is the basic version without backward propagation and hidden layers.
         
         result is 0 for B and 1 for M
+        
+        The weights and bias are saved in a modelname.json file.
         """
         self.training_real_values[self.training_real_values == 'B'] = 0
         self.training_real_values[self.training_real_values == 'M'] = 1
         self.training_real_values = self.training_real_values.astype(np.float64)
-        #print(self.training_real_values)
-        #print(self.weights.shape)
-        #print(self.training_data_array.shape)
         l = []
-        for episode in range(10000):
+        for episode in range(100000):
             a = self.model()            
             l.append(self.log_loss(a))
             self.gradient_descent(a)
         y_pred = self.predict()
-        #print(y_pred)
         print(accuracy_score(self.training_real_values, y_pred))
-        #plt.plot(l)
-        #plt.show()
+        self.save_model()
+        plt.plot(l)
+        plt.show()
     
     def predict(self):
         A = self.model()
@@ -60,11 +60,11 @@ class Training():
     
     def model(self):
         z = np.dot(self.training_data_array, self.weights) + self.bias
-        z = np.clip(z, -500, 500)
         a = self.sigmoid(z)
         return a
 
     def sigmoid(self, z):
+        z = np.clip(z, -500, 500)
         return (1 / (1 + np.exp(-z)))
 
     def log_loss(self, A):
@@ -79,6 +79,13 @@ class Training():
         m = len(model_predictions)
         self.weights = self.weights - self.learning_rate * ((1 / m) * (np.dot(self.training_data_array.T, (model_predictions - self.training_real_values))))
         self.bias = self.bias - self.learning_rate * ((1 / m) * np.sum(model_predictions - self.training_real_values))
+    
+    def save_model(self):
+        model_dict = {}
+        model_dict['weights'] = self.weights.tolist()
+        model_dict['bias'] = self.bias
+        with open('model.json', 'w') as f:
+            json.dump(model_dict, f)
         
 
 t = Training()
