@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 import json
+import random
+
 
 """
 Perceptron uses 3 formulas :
@@ -21,9 +23,9 @@ class Training():
     def __init__(self):
         self.training_data_array = np.genfromtxt("training_data.csv",delimiter=",",dtype=np.float64)[:,1:]
         self.training_real_values = np.genfromtxt("training_data.csv",delimiter=",", dtype=str, usecols=0)
-        self.weights = np.zeros(self.training_data_array.shape[1])
-        self.bias = 0.0
-        self.learning_rate = 0.001
+        self.weights = np.random.rand(self.training_data_array.shape[1])
+        self.bias = random.uniform(-5.0, 5.0)
+        self.learning_rate = 0.00001
 
     def training(self):
         """
@@ -44,7 +46,7 @@ class Training():
         self.training_real_values[self.training_real_values == 'M'] = 1
         self.training_real_values = self.training_real_values.astype(np.float64)
         l = []
-        for episode in range(100000):
+        for episode in range(10000):
             a = self.model()            
             l.append(self.log_loss(a))
             self.gradient_descent(a)
