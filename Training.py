@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 import json
-import random
 
 
 """
@@ -31,6 +30,7 @@ class Training():
     def initialization(self):
         self.parameters = {}
         layers_nb = len(self.neuron_per_layer_list)
+        np.random.seed(1)
         for layer in range(1, layers_nb):
             self.parameters["W" + str(layer)] = np.random.rand(self.neuron_per_layer_list[layer], self.neuron_per_layer_list[layer + 1]) # lignes == neurones actuels, col == neurones proch couche.
             self.parameters["b" + str(layer)] = np.random.rand(self.neuron_per_layer_list[layer + 1]) # lignes = neurones proch couche
@@ -61,13 +61,9 @@ class Training():
             l.append(self.log_loss(a))
             gradients = self.back_propagation(a)
             self.parameters_update(gradients)
-        y_pred = self.predict()
-        print(accuracy_score(self.training_real_values, y_pred))
         self.save_model()
-        plt.plot(l)
-        plt.show()
     
-    def predict(self):
+    def predict(self): # mettre dans programme de predictions.
         A = self.forward_propagation()
         return (A>=0.5)
     
@@ -83,7 +79,7 @@ class Training():
         z = np.clip(z, -500, 500)
         return (1 / (1 + np.exp(-z)))
 
-    def log_loss(self, A): # marchera plus avec plusieurs couches
+    def log_loss(self, A):
         epsilon = 1e-15
         A = np.clip(A, a_min= epsilon, a_max = 1-epsilon)
         y = self.training_real_values
@@ -111,8 +107,8 @@ class Training():
     
     def save_model(self):
         model_dict = {}
-        model_dict['weights'] = self.weights.tolist()
-        model_dict['bias'] = self.bias
+        model_dict["parameters"] = self.parameters
+        model_dict["topology"] = self.neuron_per_layer_list
         with open('model.json', 'w') as f:
             json.dump(model_dict, f)
         
