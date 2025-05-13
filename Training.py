@@ -20,13 +20,20 @@ class Training():
     """
         Slicing : array[row_start:row_stop:row_step, col_start:col_stop:col_step]
     """
-    def __init__(self, layer_neuron_nb_list):
-        self.training_data_array = np.genfromtxt("training_data.csv",delimiter=",",dtype=np.float64)[:,1:]
-        self.training_real_values = np.genfromtxt("training_data.csv",delimiter=",", dtype=str, usecols=0)
-        self.weights = np.random.rand(self.training_data_array.shape[1], next_layer_neuron_nb) # lignes == neurones actuels, col == neurones proch couche.
-        self.bias = np.random.rand(next_layer_neuron_nb) # lignes = neurones proch couche
-        self.layer_neuron_nb_list = layer_neuron_nb_list # permet d'init bias et weights pour chaque couche
+    def __init__(self, neuron_per_layer_list = [24, 24, 24]):
+        self.training_data_array = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.float64)[:,1:]
+        self.training_real_values = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.str_, usecols=0)
+        self.parameters = {}
+        self.neuron_per_layer_list = neuron_per_layer_list
+        self.initialization()
         self.learning_rate = 0.00001
+        
+    def initialization(self):
+        self.parameters = {}
+        layers_nb = len(self.neuron_per_layer_list)
+        for layer in range(1, layers_nb):
+            self.parameters["W" + str(layer)] = np.random.rand(self.neuron_per_layer_list[layer], self.neuron_per_layer_list[layer + 1]) # lignes == neurones actuels, col == neurones proch couche.
+            self.parameters["b" + str(layer)] = np.random.rand(self.neuron_per_layer_list[layer + 1]) # lignes = neurones proch couche
 
     def training(self):
         """
@@ -52,7 +59,8 @@ class Training():
         for episode in range(10000):
             a = self.forward_propagation()            
             l.append(self.log_loss(a))
-            self.back_propagation(a)
+            gradients = self.back_propagation(a)
+            self.parameters_update(gradients)
         y_pred = self.predict()
         print(accuracy_score(self.training_real_values, y_pred))
         self.save_model()
@@ -64,15 +72,18 @@ class Training():
         return (A>=0.5)
     
     def forward_propagation(self):
-        z = np.dot(self.training_data_array, self.weights) + self.bias
-        a = self.sigmoid(z)
+        layers_nb = len(self.neuron_per_layer_list)
+        a = {"A0" : self.training_data_array}
+        for layer in range(1, layers_nb + 1):
+            z = self.parameters['W' + str(layer)].dot(a['A' + str(layer - 1)]) + self.parameters['b' + str(layer)]
+            a["A" + str(layer)] = self.sigmoid(z)
         return a
 
     def sigmoid(self, z):
         z = np.clip(z, -500, 500)
         return (1 / (1 + np.exp(-z)))
 
-    def log_loss(self, A):
+    def log_loss(self, A): # marchera plus avec plusieurs couches
         epsilon = 1e-15
         A = np.clip(A, a_min= epsilon, a_max = 1-epsilon)
         y = self.training_real_values
@@ -81,9 +92,22 @@ class Training():
         return l
     
     def back_propagation(self, model_predictions):
-        m = len(model_predictions)
-        self.weights = self.weights - self.learning_rate * ((1 / m) * (np.dot(self.training_data_array.T, (model_predictions - self.training_real_values))))
-        self.bias = self.bias - self.learning_rate * ((1 / m) * np.sum(model_predictions - self.training_real_values))
+        layer_count = len(self.parameters) // 2
+        dZ = model_predictions["A" + str(layer_count)] - self.training_real_values
+        m = self.training_real_values.shape[1]
+        gradients = {}
+        for layer in reversed(range(1, layer_count + 1)):
+            gradients["dW" + str(layer)] = 1 / m * np.dot(dZ, model_predictions["A" + str(layer-1)].T)
+            gradients["db" + str(layer)] = 1 / m * np.sum(dZ, axis=1, keepdims=True)
+            if (layer > 1):
+                dZ = np.dot(self.parameters["W" + str(layer)].T, dZ) * model_predictions["A" + str(layer-1)] * (1 - model_predictions["A" + str(layer-1)])
+        return gradients
+    
+    def parameters_update(self, gradients):
+        layer_count = len(self.neuron_per_layer_list)
+        for layer in range(layer_count):
+            self.parameters["W" + str(layer)] = self.parameters["W" + str(layer)] - self.learning_rate * gradients["dW" + str(layer)]
+            self.parameters["b" + str(layer)] = self.parameters["b" + str(layer)] - self.learning_rate * gradients["db" + str(layer)]
     
     def save_model(self):
         model_dict = {}
