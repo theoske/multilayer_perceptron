@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 import pickle
-
+from math import exp, sqrt
 
 
 """
@@ -22,7 +22,7 @@ class Training():
     """
     def __init__(self, neuron_per_layer_list = [24, 24, 24], episodes = 1000, learning_rate = 0.001):
         self.training_data_array = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.float64)[:,1:]
-        self.training_real_values = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.str_, usecols=0)
+        self.training_real_values = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.str_)[:,0]
         self.parameters = {}
         self.neuron_per_layer_list = neuron_per_layer_list + [1]
         self.initialization()
@@ -40,10 +40,10 @@ class Training():
         np.random.seed(1)
         param_dim = [self.training_data_array.shape[1]] + self.neuron_per_layer_list
         for layer in range(1, len(param_dim)):
-            self.parameters["W" + str(layer)] = np.random.rand(param_dim[layer], param_dim[layer - 1]) * np.sqrt(2./param_dim[layer-1]) # he initialization. lignes == neurones actuels, col == neurones proch couche.
-            self.parameters["b" + str(layer)] = np.random.rand(param_dim[layer], 1) # lignes = neurones proch couche
+            self.parameters["W" + str(layer)] = np.full((param_dim[layer], param_dim[layer - 1]), sqrt(6/54))
+            self.parameters["b" + str(layer)] = np.full((param_dim[layer], 1), sqrt(6/54))
         for k, v in self.parameters.items():
-            print(k, v.shape)
+            print(k, v)
 
     def training(self):
         """
@@ -74,12 +74,12 @@ class Training():
         self.save_model()
         print(accuracy_score(self.training_real_values.flatten(), self.predict().flatten()))
         plt.plot(l)
-        plt.show()
+        #plt.show()
     
     def predict(self): # mettre dans programme de predictions.
         a = self.forward_propagation()
         predictions = (a["A" + str(len(self.neuron_per_layer_list))] >= 0.5).astype(int)
-        print(a)
+        #print(a)
         return predictions.T
     
     def forward_propagation(self):
@@ -87,13 +87,15 @@ class Training():
         a = {"A0" : self.training_data_array.T}
         for layer in range(1, layers_nb + 1):
             z = self.parameters['W' + str(layer)].dot(a['A' + str(layer - 1)]) + self.parameters['b' + str(layer)]
-            a["A" + str(layer)] = self.sigmoid(z)
+            a["A" + str(layer)] = self.softmax(z) if (layer == layers_nb) else self.sigmoid(z)
             a["Z" + str(layer)] = z
         return a
 
     def sigmoid(self, z):
-        z = np.clip(z, -500, 500)
         return (1 / (1 + np.exp(-z)))
+    
+    def softmax(self, z):
+        return np.exp(z) / (exp(1) + exp(0))
 
     def log_loss(self, a):
         """
@@ -111,18 +113,16 @@ class Training():
     def back_propagation(self, model_predictions):
         layer_count = len(self.neuron_per_layer_list)
         a_final = model_predictions["A" + str(layer_count)]
-        Y = self.training_real_values.T
-        dA = -(np.divide(Y, a_final) - np.divide(1 - Y, 1 - a_final))
+        y = self.training_real_values.T
+        dZ = a_final - y
         m = self.training_real_values.shape[0]
         gradients = {}
         for layer in reversed(range(1, layer_count + 1)):
-            A = model_predictions["A" + str(layer)]
             a_prev = model_predictions["A" + str(layer - 1)]
-            dZ = dA * A * (1 - A)
             gradients["dW" + str(layer)] = 1 / m * np.dot(dZ, a_prev.T)
             gradients["db" + str(layer)] = 1 / m * np.sum(dZ, axis=1, keepdims=True)
             if layer > 1:
-                dA = np.dot(self.parameters["W" + str(layer)].T, dZ)
+                dZ = np.dot(self.parameters["W" + str(layer)].T, dZ)  * model_predictions['A' + str(layer - 1)] * (1 - model_predictions['A' + str(layer - 1)])
         return gradients
     
     def parameters_update(self, gradients):
@@ -140,5 +140,5 @@ class Training():
             pickle.dump(model_dict, f)
         
 
-t = Training(episodes=1000, learning_rate=0.0005)
+t = Training(episodes=10000, learning_rate=0.0001)
 t.training()
