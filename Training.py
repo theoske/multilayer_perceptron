@@ -1,144 +1,153 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score
 import pickle
-from math import exp, sqrt
-
-
-"""
-Perceptron uses 3 formulas :
- - Linear function
- - Activation function (sigmoid)
- - Log loss function.
- - Gradient descent.
-And gradient descent algorithm.
-
-The data and the formulas are vectorized using numpy.
-"""
 
 class Training():
     """
-        Slicing : array[row_start:row_stop:row_step, col_start:col_stop:col_step]
+    entrées:
+        - nb episodes
+        - reseau de neurone
+        - learning_rate
+    variables de classe:
+        - données d'entrainements.
+        - forme réseau de neurones.
+        - learning rate.
+        - poids biais.
+        - nb episodes.
     """
-    def __init__(self, neuron_per_layer_list = [24, 24, 24], episodes = 1000, learning_rate = 0.001):
-        self.training_data_array = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.float64)[:,1:]
-        self.training_real_values = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.str_)[:,0]
-        self.parameters = {}
-        self.neuron_per_layer_list = neuron_per_layer_list + [1]
-        self.initialization()
+    def __init__(self, episodes_nb= 10000, neural_network_list= [24, 24, 24], learning_rate= 0.001):
+        self.epoch = episodes_nb
+        self.nn_list = neural_network_list
         self.learning_rate = learning_rate
-        self.episodes = episodes
-        
+        self.data_measurements = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.float64)[:,1:]
+        self.data_results = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.str_)[:,0]
+        self.weights = []
+        self.biases = []
+    
+    def train(self):
+        self.initialization()
+        for episode in range(self.epoch):
+            activation = self.forward_propagartion()
+            gradients_dict = self.backward_propagation(activation)
+            self.update_gradients(gradients_dict)
+        final_activation = self.forward_propagartion()
+        final_loss = self.log_loss(final_activation[-1])
+        final_accuracy = self.accuracy(final_activation[-1])
+        print(f"Final - Loss: {final_loss:.4f}, Accuracy: {final_accuracy:.4f}")
+    
     def initialization(self):
         """
-        W.shape = [input nb, output nb]
-        b.shape = [output nb, 1]
-        For W0 the input is the number of features in the training data.
-        For the other W the input is the number of neuron in the current layer.
+        Normalize data.
+        Initialiser les poids/biais pour qu'ils correspondent au réseau de neurones.
+        poids = liste avec chaque element correspondant a chaque couche. chaque element est tableau [nb neurones c, nb neurones c-1(=entrée de c)]
+        biais = liste avec element pour chaque couche. chaque element est tableau [nb neurones c, 1]
+        Ajouter neurone de sortie.
         """
-        self.parameters = {}
-        np.random.seed(1)
-        param_dim = [self.training_data_array.shape[1]] + self.neuron_per_layer_list
-        for layer in range(1, len(param_dim)):
-            self.parameters["W" + str(layer)] = np.full((param_dim[layer], param_dim[layer - 1]), sqrt(6/54))
-            self.parameters["b" + str(layer)] = np.full((param_dim[layer], 1), sqrt(6/54))
-        for k, v in self.parameters.items():
-            print(k, v)
+        self.data_results[self.data_results == 'B'] = 0
+        self.data_results[self.data_results == 'M'] = 1
+        self.data_results = self.data_results.astype(np.float64)
+        
+        #normalize data
+        self.data_measurements = (self.data_measurements - np.mean(self.data_measurements, axis=0)) / (np.std(self.data_measurements, axis=0) + 1e-8)
+        
+        input_layer_size = self.data_measurements.shape[1]
+        self.nn_list = [input_layer_size] + self.nn_list + [1]
+        np.random.seed(2)
+        for layer in range(1, len(self.nn_list)):
+            self.weights.append(np.random.rand(self.nn_list[layer], self.nn_list[layer-1]))
+            self.biases.append(np.random.rand(self.nn_list[layer], 1))
 
-    def training(self):
+    def forward_propagartion(self):
         """
-        30 data variables.
-        1) Make a prediction with (= forward_propagation):
-            Z = input_array * weights_array + bias
-            A = sigmoid(Z)
-        2) Calculate the error with log loss.
-        3) Adjust the weights W and the bias B with the gradient descent formulas (= back_propagation).
-        4) Repeat.
-        This is the basic version without backward propagation and hidden layers.
-        
-        result is 0 for B and 1 for M
-        
-        The weights and bias are saved in a modelname.json file.
-        
-        Uses X in the first layer and A-1 in the next ones.
+        Calculates the activation of each layer with the weights and biases
+        and stores it for the backward propagation.
         """
-        self.training_real_values[self.training_real_values == 'B'] = 0
-        self.training_real_values[self.training_real_values == 'M'] = 1
-        self.training_real_values = self.training_real_values.astype(np.float64).reshape(-1, 1)
-        l = []
-        for episode in range(self.episodes):
-            a = self.forward_propagation()            
-            l.append(self.log_loss(a))
-            gradients = self.back_propagation(a)
-            self.parameters_update(gradients)
-        self.save_model()
-        print(accuracy_score(self.training_real_values.flatten(), self.predict().flatten()))
-        plt.plot(l)
-        #plt.show()
+        z = []
+        activation = [self.data_measurements.T]
+        #uses relu function for hidden layers.
+        for layer in range(len(self.nn_list) - 2):# -2 car compte pas la couche dentree ni la couche de sortie (l'index qui commence a 0 est prit en compte par in qui va jusqua len exclue)
+            z_layer = self.weights[layer].dot(activation[layer]) + self.biases[layer]
+            z.append(z_layer)
+            activation.append(self.relu(z_layer))
+        #uses softmax function to calculate output.
+        last_layer = len(self.nn_list) - 2 # -2 car compte pas la couche dentree et doit prendre l'index (qui commence a 0)
+        z_layer = self.weights[last_layer].dot(activation[last_layer]) + self.biases[last_layer]
+        z.append(z_layer)
+        activation.append(self.sigmoid(z_layer))
+        return activation
+
+
+    def backward_propagation(self, activation):
+        """
+        Calculates the gradients of each neuron for each layer.
+        Those gradients will be used to update the weights and biases of each neuron in each layer.
+        """
+        dw = []
+        db = []
+        y_true = self.data_results.reshape(1, -1)
+        dz = activation[-1] - y_true
+        layers = len(self.nn_list) - 1
+        m = y_true.shape[1]
+        for layer in reversed(range(layers)):
+            dw.insert(0, (1/m) * np.dot(dz, activation[layer].T))
+            db.insert(0, (1/m) * np.sum(dz, axis=1, keepdims=True))
+            if layer > 0: # not necessary but prevent unnecessary calculations
+                # For ReLU derivative
+                relu_derivative = (activation[layer] > 0).astype(float)
+                dz = np.dot(self.weights[layer].T, dz) * relu_derivative
+        return {"dw":dw, "db":db}
     
-    def predict(self): # mettre dans programme de predictions.
-        a = self.forward_propagation()
-        predictions = (a["A" + str(len(self.neuron_per_layer_list))] >= 0.5).astype(int)
-        #print(a)
-        return predictions.T
-    
-    def forward_propagation(self):
-        layers_nb = len(self.neuron_per_layer_list)
-        a = {"A0" : self.training_data_array.T}
-        for layer in range(1, layers_nb + 1):
-            z = self.parameters['W' + str(layer)].dot(a['A' + str(layer - 1)]) + self.parameters['b' + str(layer)]
-            a["A" + str(layer)] = self.softmax(z) if (layer == layers_nb) else self.sigmoid(z)
-            a["Z" + str(layer)] = z
-        return a
+    def update_gradients(self, gradients_dict):
+        dw = gradients_dict["dw"]
+        db = gradients_dict["db"]
+        layers = len(self.nn_list) - 1
+        for layer in range(layers):
+            self.weights[layer] = self.weights[layer] - (self.learning_rate * dw[layer])
+            self.biases[layer] = self.biases[layer] - (self.learning_rate * db[layer])
 
     def sigmoid(self, z):
-        return (1 / (1 + np.exp(-z)))
-    
-    def softmax(self, z):
-        return np.exp(z) / (exp(1) + exp(0))
+        """
+        Softmax is used for the output layer.
+        """
+        z = np.clip(z, -500, 500)
+        return 1 / (1 + np.exp(-z))
 
-    def log_loss(self, a):
+    def relu(self, z):
         """
-        Takes the activation of the output layer and calculate the
-        error with the log loss/binary cross entropy function.
+        relu formula is used for every layer except the output layer.
         """
-        a = a["A" + str(len(self.neuron_per_layer_list))]
-        epsilon = 1e-15
-        a = np.clip(a, a_min= epsilon, a_max = 1-epsilon)
-        y = self.training_real_values.T
-        m = y.shape[1]
-        l = -(1/m) * np.sum(y * np.log(a) + (1 - y) * np.log(1 - a))
-        return l
+        #z = np.clip(z, -200, 200)
+        return np.maximum(0, z)
     
-    def back_propagation(self, model_predictions):
-        layer_count = len(self.neuron_per_layer_list)
-        a_final = model_predictions["A" + str(layer_count)]
-        y = self.training_real_values.T
-        dZ = a_final - y
-        m = self.training_real_values.shape[0]
-        gradients = {}
-        for layer in reversed(range(1, layer_count + 1)):
-            a_prev = model_predictions["A" + str(layer - 1)]
-            gradients["dW" + str(layer)] = 1 / m * np.dot(dZ, a_prev.T)
-            gradients["db" + str(layer)] = 1 / m * np.sum(dZ, axis=1, keepdims=True)
-            if layer > 1:
-                dZ = np.dot(self.parameters["W" + str(layer)].T, dZ)  * model_predictions['A' + str(layer - 1)] * (1 - model_predictions['A' + str(layer - 1)])
-        return gradients
+    def log_loss(self, predictions):
+        y_true = self.data_results.reshape(1, -1)
+        predictions = np.clip(predictions, 1e-15, 1 - 1e-15)
+        loss = -np.mean(y_true * np.log(predictions) + (1 - y_true) * np.log(1 - predictions))
+        return loss
     
-    def parameters_update(self, gradients):
-        layer_count = len(self.neuron_per_layer_list)
-        for layer in range(1, layer_count + 1):
-            self.parameters["W" + str(layer)] -= self.learning_rate * gradients["dW" + str(layer)]
-            self.parameters["b" + str(layer)] -= self.learning_rate * gradients["db" + str(layer)]
+    def accuracy(self, predictions):
+        y_true = self.data_results.reshape(1, -1)
+        predicted_classes = (predictions > 0.5).astype(int)
+        accuracy = np.mean(predicted_classes == y_true)
+        return accuracy
     
-    def save_model(self):
-        model_dict = {
-            "parameters"    : self.parameters,
-            "topology"      : self.neuron_per_layer_list
-        }
-        with open('model', 'wb+') as f:
-            pickle.dump(model_dict, f)
+    def predict(self, X):
+        """
+        Make predictions on new data
+        """
+        # Normalize input data using same parameters as training data
+        X_norm = (X - np.mean(self.data_measurements, axis=0)) / (np.std(self.data_measurements, axis=0) + 1e-8)
         
+        activation = X_norm.T
+        # Forward pass through hidden layers
+        for layer in range(len(self.weights) - 1):
+            z = self.weights[layer].dot(activation) + self.biases[layer]
+            activation = self.relu(z)
+        
+        # Output layer
+        z_output = self.weights[-1].dot(activation) + self.biases[-1]
+        output = self.sigmoid(z_output)
+        
+        return output
 
-t = Training(episodes=10000, learning_rate=0.0001)
-t.training()
+t = Training()
+t.train()
