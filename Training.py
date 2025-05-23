@@ -20,6 +20,8 @@ class Training():
         self.learning_rate = learning_rate
         self.data_measurements = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.float64)[:,1:]
         self.data_results = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.str_)[:,0]
+        self.evaluation_data_measurements = np.genfromtxt("validation_data.csv", delimiter=",", dtype=np.float64)[:,1:]
+        self.evaluation_data_results = np.genfromtxt("validation_data.csv", delimiter=",", dtype=np.str_)[:,0]
         self.weights = []
         self.biases = []
     
@@ -31,8 +33,9 @@ class Training():
             self.update_gradients(gradients_dict)
         final_activation = self.forward_propagartion()
         final_loss = self.log_loss(final_activation[-1])
-        final_accuracy = self.accuracy(final_activation[-1])
+        final_accuracy = self.accuracy(final_activation[-1], self.data_results)
         print(f"Final - Loss: {final_loss:.4f}, Accuracy: {final_accuracy:.4f}")
+        self.evaluate()
     
     def initialization(self):
         """
@@ -48,6 +51,13 @@ class Training():
         
         #normalize data
         self.data_measurements = (self.data_measurements - np.mean(self.data_measurements, axis=0)) / (np.std(self.data_measurements, axis=0) + 1e-8)
+        
+        self.evaluation_data_results[self.evaluation_data_results == 'B'] = 0
+        self.evaluation_data_results[self.evaluation_data_results == 'M'] = 1
+        self.evaluation_data_results = self.evaluation_data_results.astype(np.float64)
+        
+        #normalize data
+        self.evaluation_data_measurements = (self.evaluation_data_measurements - np.mean(self.evaluation_data_measurements, axis=0)) / (np.std(self.evaluation_data_measurements, axis=0) + 1e-8)
         
         input_layer_size = self.data_measurements.shape[1]
         self.nn_list = [input_layer_size] + self.nn_list + [1]
@@ -124,30 +134,25 @@ class Training():
         loss = -np.mean(y_true * np.log(predictions) + (1 - y_true) * np.log(1 - predictions))
         return loss
     
-    def accuracy(self, predictions):
-        y_true = self.data_results.reshape(1, -1)
+    def accuracy(self, predictions, true_results):
+        y_true = true_results.reshape(1, -1)
         predicted_classes = (predictions > 0.5).astype(int)
         accuracy = np.mean(predicted_classes == y_true)
         return accuracy
     
-    def predict(self, X):
+    def evaluate(self):
         """
-        Make predictions on new data
+        Evaluates the model using the evaluation data set to test the model on data it's not trained on.
+        This does not update the model's weights/biases.
         """
-        # Normalize input data using same parameters as training data
-        X_norm = (X - np.mean(self.data_measurements, axis=0)) / (np.std(self.data_measurements, axis=0) + 1e-8)
-        
-        activation = X_norm.T
-        # Forward pass through hidden layers
-        for layer in range(len(self.weights) - 1):
+        activation = self.evaluation_data_measurements.T
+        for layer in range(len(self.nn_list) - 2):
             z = self.weights[layer].dot(activation) + self.biases[layer]
             activation = self.relu(z)
-        
-        # Output layer
-        z_output = self.weights[-1].dot(activation) + self.biases[-1]
-        output = self.sigmoid(z_output)
-        
-        return output
+        last_layer = len(self.nn_list) - 2 # -2 car compte pas la couche dentree et doit prendre l'index (qui commence a 0)
+        z = self.weights[last_layer].dot(activation) + self.biases[last_layer]
+        activation = self.sigmoid(z)
+        print(f"Evaluation accuracy: {self.accuracy(activation, self.evaluation_data_results)}")
 
 t = Training()
 t.train()
