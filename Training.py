@@ -14,7 +14,7 @@ class Training():
         - poids biais.
         - nb episodes.
     """
-    def __init__(self, episodes_nb= 10000, neural_network_list= [24, 24, 24], learning_rate= 0.001):
+    def __init__(self, episodes_nb= 1000, neural_network_list= [24, 24, 24], learning_rate= 0.01):
         self.epoch = episodes_nb
         self.nn_list = neural_network_list
         self.learning_rate = learning_rate
@@ -31,10 +31,10 @@ class Training():
             activation = self.forward_propagartion()
             gradients_dict = self.backward_propagation(activation)
             self.update_gradients(gradients_dict)
+            self.evaluate(episode)
         final_activation = self.forward_propagartion()
-        final_loss = self.log_loss(final_activation[-1])
-        final_accuracy = self.accuracy(final_activation[-1], self.data_results)
-        print(f"Final - Loss: {final_loss:.4f}, Accuracy: {final_accuracy:.4f}")
+        gradients_dict = self.backward_propagation(final_activation)
+        self.update_gradients(gradients_dict)
         self.evaluate()
     
     def initialization(self):
@@ -128,8 +128,8 @@ class Training():
         #z = np.clip(z, -200, 200)
         return np.maximum(0, z)
     
-    def log_loss(self, predictions):
-        y_true = self.data_results.reshape(1, -1)
+    def log_loss(self, predictions, y_true):
+        y_true = y_true.reshape(1, -1)
         predictions = np.clip(predictions, 1e-15, 1 - 1e-15)
         loss = -np.mean(y_true * np.log(predictions) + (1 - y_true) * np.log(1 - predictions))
         return loss
@@ -140,19 +140,26 @@ class Training():
         accuracy = np.mean(predicted_classes == y_true)
         return accuracy
     
-    def evaluate(self):
+    def evaluate(self, epoch=-1):
         """
         Evaluates the model using the evaluation data set to test the model on data it's not trained on.
         This does not update the model's weights/biases.
         """
-        activation = self.evaluation_data_measurements.T
+        if epoch ==-1:
+            epoch = self.epoch
+        eval_activation = self.ev2(self.evaluation_data_measurements.T)
+        train_activation = self.ev2(self.data_measurements.T)
+        print(f"Epoch: {epoch}/{self.epoch}   Evaluation accuracy: {self.accuracy(eval_activation, self.evaluation_data_results)}   Evaluation loss: {self.log_loss(eval_activation.T, self.evaluation_data_results)}   Training accuracy {self.accuracy(train_activation, self.data_results)}   Training loss: {self.log_loss(train_activation.T, self.data_results)}")
+
+    def ev2(self, data):
+        activation = data
         for layer in range(len(self.nn_list) - 2):
             z = self.weights[layer].dot(activation) + self.biases[layer]
             activation = self.relu(z)
         last_layer = len(self.nn_list) - 2 # -2 car compte pas la couche dentree et doit prendre l'index (qui commence a 0)
         z = self.weights[last_layer].dot(activation) + self.biases[last_layer]
         activation = self.sigmoid(z)
-        print(f"Evaluation accuracy: {self.accuracy(activation, self.evaluation_data_results)}")
+        return activation
 
 t = Training()
 t.train()
