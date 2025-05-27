@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
 
 class Training():
     """
@@ -24,6 +25,7 @@ class Training():
         self.evaluation_data_results = np.genfromtxt("validation_data.csv", delimiter=",", dtype=np.str_)[:,0]
         self.weights = []
         self.biases = []
+        self.learning_stats = {}
     
     def train(self):
         self.initialization()
@@ -36,6 +38,7 @@ class Training():
         gradients_dict = self.backward_propagation(final_activation)
         self.update_gradients(gradients_dict)
         self.evaluate()
+        self.show_train_stats()
     
     def initialization(self):
         """
@@ -45,6 +48,11 @@ class Training():
         biais = liste avec element pour chaque couche. chaque element est tableau [nb neurones c, 1]
         Ajouter neurone de sortie.
         """
+        self.learning_stats["train_loss"] = []
+        self.learning_stats["eval_loss"] = []
+        self.learning_stats["train_accu"] = []
+        self.learning_stats["eval_accu"] = []
+        
         new_array = np.zeros((self.data_results.shape[0], 2), dtype=np.float64)
         new_array[self.data_results == 'M', 1] = 1
         new_array[self.data_results == 'B', 0] = 1
@@ -153,8 +161,16 @@ class Training():
             epoch = self.epoch
         eval_activation = self.eval_forward_prop(self.evaluation_data_measurements.T)
         train_activation = self.eval_forward_prop(self.data_measurements.T)
-        print(f"Epoch: {epoch}/{self.epoch}   Evaluation accuracy: {self.accuracy(eval_activation, self.evaluation_data_results)}   Evaluation loss: {self.log_loss(eval_activation, self.evaluation_data_results)}   Training accuracy {self.accuracy(train_activation, self.data_results)}   Training loss: {self.log_loss(train_activation, self.data_results)}")
-
+        eval_loss = self.log_loss(eval_activation, self.evaluation_data_results)
+        train_loss = self.log_loss(train_activation, self.data_results)
+        eval_accu = self.accuracy(eval_activation, self.evaluation_data_results)
+        train_accu = self.accuracy(train_activation, self.data_results)
+        print(f"Epoch: {epoch}/{self.epoch}   Evaluation accuracy: {eval_accu}   Evaluation loss: {eval_loss}   Training accuracy {train_accu}   Training loss: {train_loss}")
+        self.learning_stats["eval_loss"].append(eval_loss)
+        self.learning_stats["train_loss"].append(train_loss)
+        self.learning_stats["eval_accu"].append(eval_accu)
+        self.learning_stats["train_accu"].append(train_accu)
+    
     def eval_forward_prop(self, data):
         activation = data
         for layer in range(len(self.nn_list) - 2):
@@ -164,6 +180,26 @@ class Training():
         z = self.weights[last_layer].dot(activation) + self.biases[last_layer]
         activation = self.softmax(z)
         return activation
+    
+    def show_train_stats(self):
+        fig, (loss, accu) = plt.subplots(1, 2)
+        loss.plot(self.learning_stats["eval_loss"], color="orange")
+        loss.plot(self.learning_stats["train_loss"], color="b")
+        loss.set_xlabel("Epochs")
+        loss.set_ylabel("Loss")
+        loss.set_title("Categorical cross-entropy loss")
+        loss.legend(['Evaluation', 'Training'])
+        
+        accu.plot(self.learning_stats["eval_accu"], color="orange")
+        accu.plot(self.learning_stats["train_accu"], color="b")
+        accu.set_xlabel("Epochs")
+        accu.set_ylabel("Accuracy")
+        accu.set_title("Learning curve")
+        accu.legend(['Evaluation', 'Training'])
+        
+        plt.tight_layout()
+        fig.set_figwidth(13)
+        plt.show()
 
 t = Training()
 t.train()
