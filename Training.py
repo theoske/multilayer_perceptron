@@ -38,6 +38,7 @@ class Training():
         gradients_dict = self.backward_propagation(final_activation)
         self.update_gradients(gradients_dict)
         self.evaluate()
+        self.save_model()
         self.show_train_stats()
     
     def initialization(self):
@@ -139,7 +140,7 @@ class Training():
         """
         return np.maximum(0, z)
     
-    def log_loss(self, predictions, y_true):
+    def categorical_cross_entropy_loss(self, predictions, y_true):
         y_true = y_true.T
         predictions = np.clip(predictions, 1e-15, 1 - 1e-15)
         loss = -np.mean(y_true * np.log(predictions))
@@ -161,11 +162,11 @@ class Training():
             epoch = self.epoch
         eval_activation = self.eval_forward_prop(self.evaluation_data_measurements.T)
         train_activation = self.eval_forward_prop(self.data_measurements.T)
-        eval_loss = self.log_loss(eval_activation, self.evaluation_data_results)
-        train_loss = self.log_loss(train_activation, self.data_results)
+        eval_loss = self.categorical_cross_entropy_loss(eval_activation, self.evaluation_data_results)
+        train_loss = self.categorical_cross_entropy_loss(train_activation, self.data_results)
         eval_accu = self.accuracy(eval_activation, self.evaluation_data_results)
         train_accu = self.accuracy(train_activation, self.data_results)
-        print(f"Epoch: {epoch}/{self.epoch}   Evaluation accuracy: {eval_accu}   Evaluation loss: {eval_loss}   Training accuracy {train_accu}   Training loss: {train_loss}")
+        print(f"Epoch: {epoch}/{self.epoch}   Evaluation accuracy: {round(eval_accu, 2)}   Evaluation loss: {round(eval_loss, 2)}   Training accuracy {round(train_accu, 2)}   Training loss: {round(train_loss, 2)}")
         self.learning_stats["eval_loss"].append(eval_loss)
         self.learning_stats["train_loss"].append(train_loss)
         self.learning_stats["eval_accu"].append(eval_accu)
@@ -200,6 +201,11 @@ class Training():
         plt.tight_layout()
         fig.set_figwidth(13)
         plt.show()
+    
+    def save_model(self):
+        model_dict = {"weights": self.weights, "biases": self.biases}
+        with open('model', 'wb') as f:
+            pickle.dump(model_dict, f)
 
 t = Training()
 t.train()
