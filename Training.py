@@ -15,8 +15,8 @@ class Training():
         - poids biais.
         - nb episodes.
     """
-    def __init__(self, episodes_nb= 100, neural_network_list= [24, 24, 24], learning_rate= 0.01):
-        self.epoch = episodes_nb
+    def __init__(self, epochs= 100, neural_network_list= [24, 24, 24], learning_rate= 0.01, model_filename="model"):
+        self.epochs = epochs
         self.nn_list = neural_network_list
         self.learning_rate = learning_rate
         self.data_measurements = np.genfromtxt("training_data.csv", delimiter=",", dtype=np.float64)[:,1:]
@@ -26,10 +26,11 @@ class Training():
         self.weights = []
         self.biases = []
         self.learning_stats = {}
+        self.model_filename = model_filename
     
     def train(self):
         self.initialization()
-        for episode in range(self.epoch):
+        for episode in range(self.epochs):
             activation = self.forward_propagartion()
             gradients_dict = self.backward_propagation(activation)
             self.update_gradients(gradients_dict)
@@ -153,20 +154,20 @@ class Training():
         accuracy = np.mean(predicted_classes == true_classes)
         return accuracy
     
-    def evaluate(self, epoch=-1):
+    def evaluate(self, epochs=-1):
         """
         Evaluates the model using the evaluation data set to test the model on data it's not trained on.
         This does not update the model's weights/biases.
         """
-        if epoch ==-1:
-            epoch = self.epoch
+        if epochs ==-1:
+            epochs = self.epochs
         eval_activation = self.eval_forward_prop(self.evaluation_data_measurements.T)
         train_activation = self.eval_forward_prop(self.data_measurements.T)
         eval_loss = self.categorical_cross_entropy_loss(eval_activation, self.evaluation_data_results)
         train_loss = self.categorical_cross_entropy_loss(train_activation, self.data_results)
         eval_accu = self.accuracy(eval_activation, self.evaluation_data_results)
         train_accu = self.accuracy(train_activation, self.data_results)
-        print(f"Epoch: {epoch}/{self.epoch}   Evaluation accuracy: {round(eval_accu, 2)}   Evaluation loss: {round(eval_loss, 2)}   Training accuracy {round(train_accu, 2)}   Training loss: {round(train_loss, 2)}")
+        print(f"Epoch: {epochs}/{self.epochs}   Evaluation accuracy: {round(eval_accu, 2)}   Evaluation loss: {round(eval_loss, 2)}   Training accuracy {round(train_accu, 2)}   Training loss: {round(train_loss, 2)}")
         self.learning_stats["eval_loss"].append(eval_loss)
         self.learning_stats["train_loss"].append(train_loss)
         self.learning_stats["eval_accu"].append(eval_accu)
@@ -204,8 +205,6 @@ class Training():
     
     def save_model(self):
         model_dict = {"weights": self.weights, "biases": self.biases}
-        with open('model', 'wb') as f:
+        with open(self.model_filename, 'wb') as f:
             pickle.dump(model_dict, f)
 
-t = Training()
-t.train()
