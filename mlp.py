@@ -21,7 +21,7 @@ def main():
     parser.add_argument("--epochs", "-e", type=int, required=False)
     parser.add_argument("--topology", "-t", type=int, nargs="+", required=False)
     args = parser.parse_args()
-    if not args.config and not arg_checker(args):
+    if args.mode == "train" and not args.config and not arg_checker(args):
         parser.print_help()
         return -1
     if args.mode == "train":
@@ -34,7 +34,7 @@ def main():
         t.train()
     elif args.mode == "predict":
         p = Predicting(model_filename=args.filename)
-        p.predict
+        p.predict()
     else:
         parser.print_help()
 

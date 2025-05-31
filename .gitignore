@@ -1,3 +1,5 @@
 venv/
 *.csv
 model.json
+__pycache__
+*.json

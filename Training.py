@@ -54,24 +54,23 @@ class Training():
         self.learning_stats["eval_loss"] = []
         self.learning_stats["train_accu"] = []
         self.learning_stats["eval_accu"] = []
-        
+
         new_array = np.zeros((self.data_results.shape[0], 2), dtype=np.float64)
         new_array[self.data_results == 'M', 1] = 1
         new_array[self.data_results == 'B', 0] = 1
         self.data_results = new_array
-        
 
         #normalize data
         self.data_measurements = (self.data_measurements - np.mean(self.data_measurements, axis=0)) / (np.std(self.data_measurements, axis=0) + 1e-8)
-        
+
         new_array = np.zeros((self.evaluation_data_results.shape[0], 2), dtype=np.float64)
         new_array[self.evaluation_data_results == 'M', 1] = 1
         new_array[self.evaluation_data_results == 'B', 0] = 1
         self.evaluation_data_results = new_array
-        
+
         #normalize data
         self.evaluation_data_measurements = (self.evaluation_data_measurements - np.mean(self.evaluation_data_measurements, axis=0)) / (np.std(self.evaluation_data_measurements, axis=0) + 1e-8)
-        
+
         input_layer_size = self.data_measurements.shape[1]
         self.nn_list = [input_layer_size] + self.nn_list + [2]
         np.random.seed(2)
@@ -204,7 +203,7 @@ class Training():
         plt.show()
     
     def save_model(self):
-        model_dict = {"weights": self.weights, "biases": self.biases}
-        with open(self.model_filename, 'wb') as f:
+        model_dict = {"weights": self.weights, "biases": self.biases, "topology": self.nn_list}
+        with open("models/" + self.model_filename, 'wb') as f:
             pickle.dump(model_dict, f)
 
