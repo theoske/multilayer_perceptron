@@ -39,6 +39,9 @@ def main():
         parser.print_help()
 
 def get_infos_from_json(filename):
+    """
+    Uses a json file to get the arguments of a training session.
+    """
     with open(filename) as json_file:
         dict = json.load(json_file)
     keys_to_test = ["epochs", "topology", "learning_rate", "filename"]
@@ -47,9 +50,15 @@ def get_infos_from_json(filename):
     return int(dict["epochs"]), list(dict["topology"]), float(dict["learning_rate"]), str(dict["filename"])
 
 def all_values_are_keys(value_list, dictionary):
+    """
+    Checks if a dictionnary contains the needed keys.
+    """
     return all(value in dictionary for value in value_list)
 
 def arg_checker(args):
+    """
+    Checks if needed arguments are initialized.
+    """
     l = [args.filename, args.learning_rate, args.topology, args.epochs]
     all_set = True
     for arg in l:

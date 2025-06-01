@@ -2,6 +2,9 @@ import numpy as np
 import pickle
 
 class Predicting:
+    """
+    This class loads a trained model and uses it to make predictions on the data of a csv file.
+    """
     def __init__(self, model_filename = "model", data_to_predict="validation_data.csv"):
         self.data_measurements = np.genfromtxt(data_to_predict,delimiter=",",dtype=np.float64)[:,1:]
         self.data_results = np.genfromtxt(data_to_predict,delimiter=",",dtype=np.str_)[:,0]
@@ -11,10 +14,13 @@ class Predicting:
         self.topology = []
     
     def predict(self):
+        """
+        Uses the loaded model to make the predictions by doing a forward propagation.
+        It does not update the model's parameters.
+        """
         self.initialization()
         activation = self.forward_propagation()
         last_layer_activation = activation[len(self.topology) - 1]
-        #print(activation[len(self.topology) - 1])
         predictions = self.get_one_dim_pred(last_layer_activation)
         loss = self.binary_cross_entropy_loss(predictions) #étrange d'utiliser ca alors que l'entrainement utilise la categorical
         accu = self.accuracy(predictions)
@@ -24,33 +30,36 @@ class Predicting:
         """
         Initialize data_results in a 1D array to be able to do the binary cross-entropy loss
         instead of the categorical one like in the training program.
+        It also normalizes the data measurements.
         """
         self.data_results[self.data_results == 'M'] = 1
         self.data_results[self.data_results == 'B'] = 0
         self.data_results = self.data_results.astype(np.float64)
-        # normalize data
+
         self.data_measurements = (self.data_measurements - np.mean(self.data_measurements, axis=0)) / (np.std(self.data_measurements, axis=0) + 1e-8)
-        # load model (weights/biases/topology)
+
         self.load_model()
     
     def forward_propagation(self):
-        z = []
+        """
+        This forward propagation is the same as the one in training.
+        It uses the softmax activation function for the output layer
+        and relu for the others.
+        """
         activation = [self.data_measurements.T]
-        #uses relu function for hidden layers.
         for layer in range(len(self.topology) - 2):# -2 car compte pas la couche dentree ni la couche de sortie (l'index qui commence a 0 est prit en compte par in qui va jusqua len exclue)
             z_layer = self.weights[layer].dot(activation[layer]) + self.biases[layer]
-            z.append(z_layer)
             activation.append(self.relu(z_layer))
-        #uses softmax function to calculate output.
         last_layer = len(self.topology) - 2 # -2 car compte pas la couche dentree et doit prendre l'index (qui commence a 0)
         z_layer = self.weights[last_layer].dot(activation[last_layer]) + self.biases[last_layer]
-        z.append(z_layer)
         activation.append(self.softmax(z_layer))
         return activation
 
     def relu(self, z):
         """
         relu formula is used for every layer except the output layer.
+        It prevents the vanishing gradients problem which causes
+        the weights to become extremely small later during the backpropagation.
         """
         return np.maximum(0, z)
     
@@ -63,6 +72,11 @@ class Predicting:
         return exp_z / np.sum(exp_z, axis=0, keepdims=True)
     
     def binary_cross_entropy_loss(self, predictions):
+        """
+        Loss function for binary problems.
+        Quantifies the difference between the predictions and the
+        real values.
+        """
         predictions = np.clip(predictions, 1e-15, 1 - 1e-15) # important car si pred = 1, l = nan
         m = predictions.shape[0]
         one_array = np.full(predictions.shape, 1)
@@ -70,6 +84,9 @@ class Predicting:
         return l
     
     def accuracy(self, predictions):
+        """
+        Returns the percentage of right answers.
+        """
         result_array = np.where(predictions == self.data_results, True, False)
         r = np.count_nonzero(result_array)
         return r / result_array.shape[0]
@@ -83,6 +100,10 @@ class Predicting:
         return one_d_pred
     
     def load_model(self):
+        """
+        Loads the model (weights/biases/network topology)
+        using the pickle library.
+        """
         with open("models/" + self.model_filename, 'rb') as f:
             imported_model = pickle.load(f)
         self.weights = imported_model["weights"]
