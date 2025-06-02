@@ -1,4 +1,3 @@
-from genericpath import exists
 from Training import Training
 from Predicting import Predicting 
 import argparse
