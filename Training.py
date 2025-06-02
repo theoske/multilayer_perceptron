@@ -29,7 +29,11 @@ class Training():
             - Evaluates the model's performances.
             - Repeat.
         """
-        self.initialization()
+        try:
+            self.initialization()
+        except:
+            print("ERROR : Training parameters invalid for initialization.")
+            exit(-1)
         for episode in range(self.epochs):
             activation = self.forward_propagartion()
             gradients_dict = self.backward_propagation(activation)

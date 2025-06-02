@@ -1,7 +1,9 @@
+from genericpath import exists
 from Training import Training
 from Predicting import Predicting 
 import argparse
 import json
+import os.path
 
 def main():
     """
@@ -26,27 +28,44 @@ def main():
         return -1
     if args.mode == "train":
         if args.config:
-            epochs, topology, lr, filename = get_infos_from_json(args.config)
+            try:
+                epochs, topology, lr, filename = get_infos_from_json(args.config)
+            except:
+                print(f"ERROR : configuration file \'{args.config}\' contains an error.")
+                return (-1)
             print(epochs, type(epochs), topology, type(topology), lr, type(lr), filename, type(filename))
             t = Training(epochs=epochs, neural_network_list=topology, learning_rate=lr, model_filename=filename)
         else:
             t = Training(epochs=args.epochs, neural_network_list=args.topology, learning_rate=args.learning_rate, model_filename=args.filename)
         t.train()
     elif args.mode == "predict":
-        p = Predicting(model_filename=args.filename)
-        p.predict()
+        try:
+            p = Predicting(model_filename=args.filename)
+            p.predict()
+        except:
+            print("ERROR : prediction model invalid.")
+            exit(-1)
     else:
         parser.print_help()
 
 def get_infos_from_json(filename):
     """
     Uses a json file to get the arguments of a training session.
+    Checks if the config file contains all the needed informations.
     """
-    with open(filename) as json_file:
-        dict = json.load(json_file)
+    if os.path.exists(filename) is False:
+        print(f"ERROR : configuration file \'{filename}\' does not exist.")
+        exit(-1)
+    try:
+        with open(filename) as json_file:
+            dict = json.load(json_file)
+    except:
+        print(f"ERROR : configuration file \'{filename}\' is broken.")
+        exit(-1)
     keys_to_test = ["epochs", "topology", "learning_rate", "filename"]
     if not all_values_are_keys(keys_to_test, dict):
         print("Error: model config file needs: \"epochs\", \"topology\", \"learning_rate\" and \"filename\".")
+        exit(-1)
     return int(dict["epochs"]), list(dict["topology"]), float(dict["learning_rate"]), str(dict["filename"])
 
 def all_values_are_keys(value_list, dictionary):
