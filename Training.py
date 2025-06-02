@@ -89,10 +89,10 @@ class Training():
         and relu for the others.
         """
         activation = [self.data_measurements.T]
-        for layer in range(len(self.nn_list) - 2):# -2 car compte pas la couche dentree ni la couche de sortie (l'index qui commence a 0 est prit en compte par in qui va jusqua len exclue)
+        for layer in range(len(self.nn_list) - 2):
             z_layer = self.weights[layer].dot(activation[layer]) + self.biases[layer]
             activation.append(self.relu(z_layer))
-        last_layer = len(self.nn_list) - 2 # -2 car compte pas la couche dentree et doit prendre l'index (qui commence a 0)
+        last_layer = len(self.nn_list) - 2
         z_layer = self.weights[last_layer].dot(activation[last_layer]) + self.biases[last_layer]
         activation.append(self.softmax(z_layer))
         return activation
@@ -113,8 +113,7 @@ class Training():
         for layer in reversed(range(layers)):
             dw.insert(0, (1/m) * np.dot(dz, activation[layer].T))
             db.insert(0, (1/m) * np.sum(dz, axis=1, keepdims=True))
-            if layer > 0: # not necessary but prevent unnecessary calculations
-                # For ReLU derivative
+            if layer > 0: # not necessary but prevents unnecessary calculations
                 relu_derivative = (activation[layer] > 0).astype(float)
                 dz = np.dot(self.weights[layer].T, dz) * relu_derivative
         return {"dw":dw, "db":db}
@@ -128,8 +127,8 @@ class Training():
         db = gradients_dict["db"]
         layers = len(self.nn_list) - 1
         for layer in range(layers):
-            self.weights[layer] = self.weights[layer] - (self.learning_rate * dw[layer])
-            self.biases[layer] = self.biases[layer] - (self.learning_rate * db[layer])
+            self.weights[layer] -= self.learning_rate * dw[layer]
+            self.biases[layer] -= self.learning_rate * db[layer]
 
     def softmax(self, z):
         """

@@ -47,10 +47,10 @@ class Predicting:
         and relu for the others.
         """
         activation = [self.data_measurements.T]
-        for layer in range(len(self.topology) - 2):# -2 car compte pas la couche dentree ni la couche de sortie (l'index qui commence a 0 est prit en compte par in qui va jusqua len exclue)
+        for layer in range(len(self.topology) - 2):
             z_layer = self.weights[layer].dot(activation[layer]) + self.biases[layer]
             activation.append(self.relu(z_layer))
-        last_layer = len(self.topology) - 2 # -2 car compte pas la couche dentree et doit prendre l'index (qui commence a 0)
+        last_layer = len(self.topology) - 2
         z_layer = self.weights[last_layer].dot(activation[last_layer]) + self.biases[last_layer]
         activation.append(self.softmax(z_layer))
         return activation
