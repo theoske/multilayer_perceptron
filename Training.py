@@ -76,7 +76,7 @@ class Training():
 
         input_layer_size = self.data_measurements.shape[1]
         self.nn_list = [input_layer_size] + self.nn_list + [2]
-        np.random.seed(2)
+        np.random.seed(1)
         for layer in range(1, len(self.nn_list)):
             self.weights.append(np.random.rand(self.nn_list[layer], self.nn_list[layer-1]))
             self.biases.append(np.random.rand(self.nn_list[layer], 1))
@@ -180,7 +180,7 @@ class Training():
         train_loss = self.categorical_cross_entropy_loss(train_activation, self.data_results)
         eval_accu = self.accuracy(eval_activation, self.evaluation_data_results)
         train_accu = self.accuracy(train_activation, self.data_results)
-        print(f"Epoch: {epochs}/{self.epochs}   Evaluation accuracy: {round(eval_accu, 2)}   Evaluation loss: {round(eval_loss, 2)}   Training accuracy {round(train_accu, 2)}   Training loss: {round(train_loss, 2)}")
+        print(f"Epoch: {epochs}/{self.epochs}   Evaluation accuracy: {round(eval_accu, 4)}   Evaluation loss: {round(eval_loss, 4)}   Training accuracy {round(train_accu, 4)}   Training loss: {round(train_loss, 4)}")
         self.learning_stats["eval_loss"].append(eval_loss)
         self.learning_stats["train_loss"].append(train_loss)
         self.learning_stats["eval_accu"].append(eval_accu)

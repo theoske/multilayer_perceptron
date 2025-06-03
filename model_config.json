@@ -1,6 +1,6 @@
 {
-    "topology" : [4, 4],
+    "topology" : [6, 6],
     "learning_rate" : "0.1",
-    "epochs" : 100,
+    "epochs" : 168,
     "filename" : "mlp_model_1"
 }
