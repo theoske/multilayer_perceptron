@@ -22,7 +22,7 @@ class Predicting:
         activation = self.forward_propagation()
         last_layer_activation = activation[len(self.topology) - 1]
         predictions = self.get_one_dim_pred(last_layer_activation)
-        loss = self.binary_cross_entropy_loss(predictions) #étrange d'utiliser ca alors que l'entrainement utilise la categorical
+        loss = self.binary_cross_entropy_loss(predictions)
         accu = self.accuracy(predictions)
         print(f"{self.model_filename} loss: {round(loss, 2)} accuracy: {round(accu, 2)}")
     
@@ -77,7 +77,7 @@ class Predicting:
         Quantifies the difference between the predictions and the
         real values.
         """
-        predictions = np.clip(predictions, 1e-15, 1 - 1e-15) # important car si pred = 1, l = nan
+        predictions = np.clip(predictions, 1e-15, 1 - 1e-15)
         m = predictions.shape[0]
         one_array = np.full(predictions.shape, 1)
         l = -(1/m) * np.sum(self.data_results * np.log(predictions) + (one_array-self.data_results) * np.log(1-predictions))
@@ -87,6 +87,7 @@ class Predicting:
         """
         Returns the percentage of right answers.
         """
+        predictions = np.where(predictions > 0.5, 1, 0)
         result_array = np.where(predictions == self.data_results, True, False)
         r = np.count_nonzero(result_array)
         return r / result_array.shape[0]
@@ -95,7 +96,7 @@ class Predicting:
         """
         Predictions is (2, N) array. This method returns predictions in a (1, N) array.
         """
-        predictions = predictions.round().astype(np.float64)
+        predictions = predictions.astype(np.float64)
         one_d_pred = predictions[1, :]
         return one_d_pred
     

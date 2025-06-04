@@ -195,7 +195,7 @@ class Training():
         for layer in range(len(self.nn_list) - 2):
             z = self.weights[layer].dot(activation) + self.biases[layer]
             activation = self.relu(z)
-        last_layer = len(self.nn_list) - 2 # -2 car compte pas la couche dentree et doit prendre l'index (qui commence a 0)
+        last_layer = len(self.nn_list) - 2
         z = self.weights[last_layer].dot(activation) + self.biases[last_layer]
         activation = self.softmax(z)
         return activation
